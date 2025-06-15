@@ -1,36 +1,35 @@
-# This is a basic workflow to help you get started with Actions
+name: Comment on Every New Issue and PR
 
-name: CI
+permissions:
+  issues: write
+  pull-requests: write
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  comment:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Comment on Issue or PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const isIssue = !!context.payload.issue;
+            const number = isIssue ? context.payload.issue.number : context.payload.pull_request.number;
+            const type = isIssue ? "issue" : "pull request";
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+            const message = isIssue
+              ? "👋 Please note that this issue will be automatically closed shortly. For prompt assistance and a timely resolution, we kindly advise reaching out to our [Live Support Team](https://interact-gethelp.web.app/) directly."
+              : "🎉 Thanks for opening a pull request! We're excited to review your contribution.";
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body: message + "\n\nStay awesome! 🚀"
+            });
